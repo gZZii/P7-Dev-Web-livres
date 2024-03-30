@@ -63,30 +63,11 @@ exports.modifyBook = (req, res, next) => {
         return res.status(403).json({ message: "Unauthorized request" });
       }
 
-      // Traitement de la note si elle est fournie
-      const { userId, rating } = req.body;
-      if (rating && rating >= 0 && rating <= 5) {
-        const existingRatingIndex = book.ratings.findIndex(
-          (r) => r.userId === userId
-        );
-        if (existingRatingIndex !== -1) {
-          // Mise à jour de la note existante
-          book.ratings[existingRatingIndex].grade = rating;
-        } else {
-          // Ajout d'une nouvelle note
-          book.ratings.push({ userId, grade: rating });
-        }
-        // Recalcul de la note moyenne du livre
-        const totalRatings = book.ratings.length;
-        const sumRatings = book.ratings.reduce((sum, r) => sum + r.grade, 0);
-        book.averageRating = parseFloat((sumRatings / totalRatings).toFixed(2));
-      }
-
       const oldImageUrl = book.imageUrl;
       // Mise à jour des informations du livre dans la base de données
       Book.updateOne(
         { _id: req.params.id },
-        { ...bookObject, _id: req.params.id, averageRating: book.averageRating }
+        { ...bookObject, _id: req.params.id }
       )
         .then(() => {
           if (req.file) {
@@ -111,7 +92,7 @@ exports.deleteBook = (req, res, next) => {
     .then((book) => {
       if (book.userId != req.auth.userId) {
         // Vérification des droits de suppression du livre
-        res.status(401).json({ message: "Not authorized" });
+        res.status(403).json({ message: "Unauthorized request" });
       } else {
         // Suppression de l'image du livre
         const filename = book.imageUrl.split("/images/")[1];
@@ -144,8 +125,7 @@ exports.addRating = (req, res, next) => {
       const ratingIndex = foundBook.ratings.findIndex(r => r.userId === userId);
 
       if (ratingIndex !== -1) {
-        // Mise à jour de la note existante
-        foundBook.ratings[ratingIndex].grade = rating;
+        return res.status(400).json({ message: "Note déjà attribuée." });
       } else {
         // Ajout d'une nouvelle note
         foundBook.ratings.push({ userId, grade: rating });
